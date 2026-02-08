@@ -226,15 +226,15 @@ export default function StocksPage() {
                     </div>
                 </div>
                 <div className="stat-card">
-                    <div className="stat-card__label">Data Points</div>
-                    <div className="stat-card__value">
-                        {stats?.ohlcvCount?.toLocaleString() ?? '—'}
+                    <div className="stat-card__label">Positive Today</div>
+                    <div className="stat-card__value" style={{ color: 'var(--green)' }}>
+                        {stats?.positiveCount ?? '—'}
                     </div>
                 </div>
                 <div className="stat-card">
-                    <div className="stat-card__label">Data Range</div>
+                    <div className="stat-card__label">Last Updated</div>
                     <div className="stat-card__value" style={{ fontSize: '1rem' }}>
-                        {stats?.dateRange?.from ?? '—'} to {stats?.dateRange?.to ?? '—'}
+                        {stats?.lastUpdated ?? '—'}
                     </div>
                 </div>
             </div>
@@ -337,8 +337,22 @@ export default function StocksPage() {
                                     {stocks.map((stock) => (
                                         <tr key={stock.symbol}>
                                             <td className="col-symbol">
-                                                <div className="symbol">{stock.symbol}</div>
-                                                <div className="company-name">{stock.companyName}</div>
+                                                <div className="symbol-with-logo">
+                                                    <img
+                                                        src={`/logos/${stock.symbol}.png`}
+                                                        alt=""
+                                                        width={28}
+                                                        height={28}
+                                                        className="stock-logo"
+                                                        onError={(e) => {
+                                                            (e.target as HTMLImageElement).style.display = 'none';
+                                                        }}
+                                                    />
+                                                    <div>
+                                                        <div className="symbol">{stock.symbol}</div>
+                                                        <div className="company-name">{stock.companyName}</div>
+                                                    </div>
+                                                </div>
                                             </td>
                                             <td className="price col-price">{formatCurrency(stock.close)}</td>
                                             <td className="col-percent">

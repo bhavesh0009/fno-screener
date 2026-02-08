@@ -1,0 +1,834 @@
+{
+  "360ONE": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "ABB": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "ABCAPITAL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "ADANIENSOL": {
+    "available": false,
+    "placeholder": true
+  },
+  "ADANIENT": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "ADANIGREEN": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "ADANIPORTS": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "ALKEM": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "AMBER": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "AMBUJACEM": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "ANGELONE": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "APLAPOLLO": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "APOLLOHOSP": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "ASHOKLEY": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "ASIANPAINT": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "ASTRAL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "AUBANK": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "AUROPHARMA": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "AXISBANK": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "BAJAJ-AUTO": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "BAJAJFINSV": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "BAJAJHLDNG": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "BAJFINANCE": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "BANDHANBNK": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "BANKBARODA": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "BANKINDIA": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "BDL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "BEL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "BHARATFORG": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "BHARTIARTL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "BHEL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "BIOCON": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "BLUESTARCO": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "BOSCHLTD": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "BPCL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "BRITANNIA": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "BSE": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "CAMS": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "CANBK": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "CDSL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "CGPOWER": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "CHOLAFIN": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "CIPLA": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "COALINDIA": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "COFORGE": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "COLPAL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "CONCOR": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "CROMPTON": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "CUMMINSIND": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "DABUR": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "DALBHARAT": {
+    "available": false,
+    "placeholder": true
+  },
+  "DELHIVERY": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "DIVISLAB": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "DIXON": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "DLF": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "DMART": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "DRREDDY": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "EICHERMOT": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "ETERNAL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "EXIDEIND": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "FEDERALBNK": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "FORTIS": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "GAIL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "GLENMARK": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "GMRAIRPORT": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "GODREJCP": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "GODREJPROP": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "GRASIM": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "HAL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "HAVELLS": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "HCLTECH": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "HDFCAMC": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "HDFCBANK": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "HDFCLIFE": {
+    "available": true,
+    "source": "google"
+  },
+  "HEROMOTOCO": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "HINDALCO": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "HINDPETRO": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "HINDUNILVR": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "HINDZINC": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "HUDCO": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "ICICIBANK": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "ICICIGI": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "ICICIPRULI": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "IDEA": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "IDFCFIRSTB": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "IEX": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "IIFL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "INDHOTEL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "INDIANB": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "INDIGO": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "INDUSINDBK": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "INDUSTOWER": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "INFY": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "INOXWIND": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "IOC": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "IRCTC": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "IREDA": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "IRFC": {
+    "available": false,
+    "placeholder": true
+  },
+  "ITC": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "JINDALSTEL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "JIOFIN": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "JSWENERGY": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "JSWSTEEL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "JUBLFOOD": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "KALYANKJIL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "KAYNES": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "KEI": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "KFINTECH": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "KOTAKBANK": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "KPITTECH": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "LAURUSLABS": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "LICHSGFIN": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "LICI": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "LODHA": {
+    "available": true,
+    "source": "google"
+  },
+  "LT": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "LTF": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "LTIM": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "LUPIN": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "M&M": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "MANAPPURAM": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "MANKIND": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "MARICO": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "MARUTI": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "MAXHEALTH": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "MAZDOCK": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "MCX": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "MFSL": {
+    "available": true,
+    "source": "google"
+  },
+  "MOTHERSON": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "MPHASIS": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "MUTHOOTFIN": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "NATIONALUM": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "NAUKRI": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "NBCC": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "NESTLEIND": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "NHPC": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "NMDC": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "NTPC": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "NUVAMA": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "NYKAA": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "OBEROIRLTY": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "OFSS": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "OIL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "ONGC": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "PAGEIND": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "PATANJALI": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "PAYTM": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "PERSISTENT": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "PETRONET": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "PFC": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "PGEL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "PHOENIXLTD": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "PIDILITIND": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "PIIND": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "PNB": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "PNBHOUSING": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "POLICYBZR": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "POLYCAB": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "POWERGRID": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "POWERINDIA": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "PPLPHARMA": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "PREMIERENE": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "PRESTIGE": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "RBLBANK": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "RECLTD": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "RELIANCE": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "RVNL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "SAIL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "SAMMAANCAP": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "SBICARD": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "SBILIFE": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "SBIN": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "SHREECEM": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "SHRIRAMFIN": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "SIEMENS": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "SOLARINDS": {
+    "available": false,
+    "placeholder": true
+  },
+  "SONACOMS": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "SRF": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "SUNPHARMA": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "SUPREMEIND": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "SUZLON": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "SWIGGY": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "SYNGENE": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "TATACONSUM": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "TATAELXSI": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "TATAPOWER": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "TATASTEEL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "TATATECH": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "TCS": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "TECHM": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "TIINDIA": {
+    "available": true,
+    "source": "google"
+  },
+  "TITAN": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "TMPV": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "TORNTPHARM": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "TORNTPOWER": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "TRENT": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "TVSMOTOR": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "ULTRACEMCO": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "UNIONBANK": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "UNITDSPR": {
+    "available": false,
+    "placeholder": true
+  },
+  "UNOMINDA": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "UPL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "VBL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "VEDL": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "VOLTAS": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "WAAREEENER": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "WIPRO": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "YESBANK": {
+    "available": true,
+    "source": "logo.dev"
+  },
+  "ZYDUSLIFE": {
+    "available": true,
+    "source": "logo.dev"
+  }
+}

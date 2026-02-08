@@ -76,7 +76,21 @@ export default function ScreensPage() {
 
     switch (col.type) {
       case 'symbol':
-        return <span className="symbol">{value}</span>;
+        return (
+          <span className="symbol-with-logo">
+            <img
+              src={`/logos/${value}.png`}
+              alt=""
+              width={24}
+              height={24}
+              className="stock-logo"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+            <span className="symbol">{value}</span>
+          </span>
+        );
       case 'currency':
         return <span className="price">₹{Number(value).toFixed(2)}</span>;
       case 'percent':

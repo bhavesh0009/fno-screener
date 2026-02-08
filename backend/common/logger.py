@@ -4,7 +4,7 @@ Provides JSON-formatted logs with timestamps and context.
 """
 import logging
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Any, Dict
 
@@ -16,7 +16,7 @@ class JSONFormatter(logging.Formatter):
     
     def format(self, record: logging.LogRecord) -> str:
         log_data = {
-            "timestamp": datetime.now(datetime.UTC).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -62,7 +62,7 @@ class PipelineLogger:
         file_handler.setFormatter(JSONFormatter())
         self.logger.addHandler(file_handler)
         
-        # Console handler with simple format
+        # Console handler with simple format (context will be appended to message)
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(
             logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -72,6 +72,10 @@ class PipelineLogger:
     def _log(self, level: int, message: str, **context):
         """Log with optional context."""
         extra = {"context": context} if context else {}
+        # Append context to message for console readability
+        if context:
+            context_str = " | " + ", ".join(f"{k}={v}" for k, v in context.items())
+            message = message + context_str
         self.logger.log(level, message, extra=extra)
     
     def debug(self, message: str, **context):

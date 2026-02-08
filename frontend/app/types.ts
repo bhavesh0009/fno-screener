@@ -63,11 +63,8 @@ export interface Stock {
 
 export interface Stats {
     stockCount: number;
-    ohlcvCount: number;
-    dateRange: {
-        from: string;
-        to: string;
-    };
+    positiveCount: number;
+    lastUpdated: string | null;
 }
 
 export interface Pagination {

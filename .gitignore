@@ -22,3 +22,5 @@ out/
 # Logs
 backend/logs/*.log
 !backend/logs/.gitkeep
+
+*.png

@@ -29,20 +29,27 @@ def get_stats():
     conn = get_db()
     
     stock_count = conn.execute("SELECT COUNT(*) FROM fno_stocks").fetchone()[0]
-    ohlcv_count = conn.execute("SELECT COUNT(*) FROM daily_ohlcv").fetchone()[0]
-    date_range = conn.execute(
-        "SELECT MIN(date), MAX(date) FROM daily_ohlcv"
-    ).fetchone()
+    
+    # Get the latest date and count positive stocks on that date
+    latest_date = conn.execute("SELECT MAX(date) FROM daily_ohlcv").fetchone()[0]
+    
+    # Count stocks with positive change on latest date
+    positive_count = 0
+    if latest_date:
+        positive_count = conn.execute("""
+            SELECT COUNT(*) FROM daily_ohlcv 
+            WHERE date = ? 
+              AND prev_close IS NOT NULL 
+              AND prev_close > 0
+              AND close > prev_close
+        """, [latest_date]).fetchone()[0]
     
     conn.close()
     
     return jsonify({
         "stockCount": stock_count,
-        "ohlcvCount": ohlcv_count,
-        "dateRange": {
-            "from": str(date_range[0]) if date_range[0] else None,
-            "to": str(date_range[1]) if date_range[1] else None,
-        }
+        "positiveCount": positive_count,
+        "lastUpdated": str(latest_date) if latest_date else None
     })
 
 

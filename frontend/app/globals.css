@@ -239,6 +239,20 @@ body {
   margin-top: 2px;
 }
 
+/* Symbol with logo layout */
+.symbol-with-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stock-logo {
+  border-radius: 6px;
+  object-fit: contain;
+  flex-shrink: 0;
+  background: white;
+}
+
 /* Price styling */
 .price {
   font-weight: 600;

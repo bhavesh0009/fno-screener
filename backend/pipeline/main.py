@@ -39,7 +39,7 @@ def fetch_worker(symbol):
 def detect_mismatches(conn):
     """
     Detect stocks that likely had corporate actions (splits/bonuses).
-    Looks for single-day drops > 30% which indicate unadjusted prices.
+    Looks for single-day changes > 30% (drops OR gains) which indicate unadjusted prices.
     Returns list of symbols that need yfinance backup.
     """
     logger.info("Detecting price mismatches")
@@ -55,7 +55,7 @@ def detect_mismatches(conn):
         SELECT DISTINCT symbol
         FROM ordered_data
         WHERE prev_close IS NOT NULL
-          AND (close - prev_close) / prev_close < -0.30
+          AND ABS((close - prev_close) / prev_close) > 0.30
     ''').fetchall()
     
     symbols = [r[0] for r in result]
@@ -185,7 +185,16 @@ def collect_all():
     
     # === STEP 4: Fetch NIFTY 50 index from yfinance (more historical data) ===
     logger.info("STEP 4: Fetching NIFTY 50 index data from yfinance")
-    nifty_df = fetch_index_from_yfinance("NIFTY 50", start_date=DATA_START_DATE)
+    
+    # Convert dd-mm-yyyy to YYYY-MM-DD for yfinance
+    try:
+        start_date_dt = datetime.strptime(DATA_START_DATE, "%d-%m-%Y")
+        yf_start_date = start_date_dt.strftime("%Y-%m-%d")
+    except ValueError:
+        logger.warning(f"Could not parse DATA_START_DATE: {DATA_START_DATE}, using default 2025-01-01")
+        yf_start_date = "2025-01-01"
+
+    nifty_df = fetch_index_from_yfinance("NIFTY 50", start_date=yf_start_date)
     if nifty_df is not None:
         nifty_records = store_index_data(conn, "NIFTY 50", nifty_df)
         logger.info("NIFTY 50 index stored", records=nifty_records)
