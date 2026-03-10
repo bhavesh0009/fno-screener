@@ -1,7 +1,7 @@
 """Main entry point for stock data collection with structured logging."""
 import argparse
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 import concurrent.futures
 
 from common.config import DB_PATH, DATA_PERIOD, DATA_START_DATE, REQUEST_DELAY_SECONDS
@@ -26,12 +26,20 @@ from pipeline.collectors.nse_collector import (
 logger = get_pipeline_logger("main")
 
 
-def fetch_worker(symbol):
+def fetch_worker(symbol, latest_date=None):
     """Worker function to fetch data for a single stock using date range."""
     try:
+        from_date = DATA_START_DATE
+        if latest_date:
+            next_date = latest_date + timedelta(days=1)
+            if next_date > datetime.now().date():
+                logger.debug("Stock up to date, skipping", symbol=symbol)
+                return symbol, None
+            from_date = next_date.strftime("%d-%m-%Y")
+            
         df = fetch_stock_data(
             symbol=symbol,
-            from_date=DATA_START_DATE,
+            from_date=from_date,
             delay=REQUEST_DELAY_SECONDS
         )
         return symbol, df
@@ -67,51 +75,66 @@ def detect_mismatches(conn):
     return symbols
 
 
+def fetch_yf_worker(symbol):
+    """Worker function to fetch yfinance data."""
+    yf_df = fetch_from_yfinance(symbol, start_date="2025-01-01", delay=0.1)
+    return symbol, yf_df
+
+
 def fix_with_yfinance(conn, symbols):
     """
     Fetch adjusted data from yfinance and update all OHLC + volume for mismatched stocks.
+    Runs concurrently.
     Returns dict with success/failure counts.
     """
     results = {'fixed': [], 'failed': []}
     
-    for symbol in symbols:
-        logger.info("Fixing with yfinance", symbol=symbol)
-        yf_df = fetch_from_yfinance(symbol, start_date="2025-01-01")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_symbol = {executor.submit(fetch_yf_worker, symbol): symbol for symbol in symbols}
         
-        if yf_df is None or yf_df.empty:
-            results['failed'].append(symbol)
-            logger.warning("yfinance fix failed - no data", symbol=symbol)
-            continue
-        
-        # Update all OHLC + volume for each date (yfinance provides adjusted OHLC)
-        updated = 0
-        for _, row in yf_df.iterrows():
+        for future in concurrent.futures.as_completed(future_to_symbol):
+            symbol = future_to_symbol[future]
             try:
-                conn.execute('''
-                    UPDATE daily_ohlcv 
-                    SET open = ?, high = ?, low = ?, close = ?, volume = ?
-                    WHERE symbol = ? AND date = ?
-                ''', [
-                    float(row['open']),
-                    float(row['high']),
-                    float(row['low']),
-                    float(row['close']),
-                    int(row['volume']),
-                    symbol,
-                    row['date']
-                ])
-                updated += 1
+                sym, yf_df = future.result()
+                
+                if yf_df is None or yf_df.empty:
+                    results['failed'].append(symbol)
+                    logger.warning("yfinance fix failed - no data", symbol=symbol)
+                    continue
+                
+                # Update all OHLC + volume for each date (yfinance provides adjusted OHLC)
+                updated = 0
+                for _, row in yf_df.iterrows():
+                    try:
+                        conn.execute('''
+                            UPDATE daily_ohlcv 
+                            SET open = ?, high = ?, low = ?, close = ?, volume = ?
+                            WHERE symbol = ? AND date = ?
+                        ''', [
+                            float(row['open']),
+                            float(row['high']),
+                            float(row['low']),
+                            float(row['close']),
+                            int(row['volume']),
+                            symbol,
+                            row['date']
+                        ])
+                        updated += 1
+                    except Exception as e:
+                        pass  # Skip dates not in our DB
+                
+                if updated > 0:
+                    results['fixed'].append(symbol)
+                    logger.info("Stock fixed with yfinance", symbol=symbol, records_updated=updated)
+                else:
+                    results['failed'].append(symbol)
+                    logger.warning("yfinance fix failed - no records updated", symbol=symbol)
+            
             except Exception as e:
-                pass  # Skip dates not in our DB
-        
-        conn.commit()  # Ensure changes are persisted
-        if updated > 0:
-            results['fixed'].append(symbol)
-            logger.info("Stock fixed with yfinance", symbol=symbol, records_updated=updated)
-        else:
-            results['failed'].append(symbol)
-            logger.warning("yfinance fix failed - no records updated", symbol=symbol)
-    
+                logger.error("Error in yfinance fix worker", symbol=symbol, error=str(e))
+                results['failed'].append(symbol)
+
+    conn.commit()  # Ensure changes are persisted
     return results
 
 
@@ -149,14 +172,20 @@ def collect_all():
     # === STEP 1: Fetch from nselib (primary source) ===
     logger.info("STEP 1: Fetching from nselib", 
                 stock_count=len(symbols), 
-                concurrent_workers=5)
+                concurrent_workers=10)
     
     success_count = 0
     fail_count = 0
     total_records = 0
     
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        future_to_symbol = {executor.submit(fetch_worker, symbol): symbol for symbol in symbols}
+    # Get max dates to perform incremental fetch
+    try:
+        max_dates = dict(conn.execute("SELECT symbol, MAX(date) FROM daily_ohlcv GROUP BY symbol").fetchall())
+    except Exception:
+        max_dates = {}
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_symbol = {executor.submit(fetch_worker, symbol, max_dates.get(symbol)): symbol for symbol in symbols}
         
         for i, future in enumerate(concurrent.futures.as_completed(future_to_symbol), 1):
             symbol = future_to_symbol[future]

@@ -114,6 +114,13 @@ def fetch_stock_metadata(symbol: str) -> Dict[str, str]:
         return {}
 
 
+import concurrent.futures
+
+def _update_worker(symbol: str, delay_seconds: float):
+    metadata = fetch_stock_metadata(symbol)
+    time.sleep(delay_seconds)
+    return symbol, metadata
+
 def update_stock_metadata(
     conn: duckdb.DuckDBPyConnection,
     symbols_to_update: List[str],
@@ -136,24 +143,25 @@ def update_stock_metadata(
     logger.info("Updating stock metadata", count=len(symbols_to_update))
     updated = 0
     
-    for i, symbol in enumerate(symbols_to_update):
-        metadata = fetch_stock_metadata(symbol)
-        
-        if metadata.get('industry') or metadata.get('segment'):
-            conn.execute("""
-                UPDATE fno_stocks 
-                SET industry = ?, segment = ?
-                WHERE symbol = ?
-            """, [metadata.get('industry', ''), metadata.get('segment', ''), symbol])
-            updated += 1
-            
-        # Progress logging every 20 stocks
-        if (i + 1) % 20 == 0:
-            logger.info("Metadata progress", processed=i+1, total=len(symbols_to_update), updated=updated)
-        
-        # Rate limiting
-        if i < len(symbols_to_update) - 1:
-            time.sleep(delay_seconds)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_symbol = {executor.submit(_update_worker, symbol, delay_seconds): symbol for symbol in symbols_to_update}
+        for i, future in enumerate(concurrent.futures.as_completed(future_to_symbol)):
+            symbol = future_to_symbol[future]
+            try:
+                sym, metadata = future.result()
+                if metadata.get('industry') or metadata.get('segment'):
+                    conn.execute("""
+                        UPDATE fno_stocks 
+                        SET industry = ?, segment = ?
+                        WHERE symbol = ?
+                    """, [metadata.get('industry', ''), metadata.get('segment', ''), symbol])
+                    updated += 1
+                    
+                # Progress logging every 20 stocks
+                if (i + 1) % 20 == 0:
+                    logger.info("Metadata progress", processed=i+1, total=len(symbols_to_update), updated=updated)
+            except Exception as e:
+                logger.error("Metadata update failed", symbol=symbol, error=str(e))
     
     conn.commit()
     logger.info("Stock metadata updated", total=len(symbols_to_update), updated=updated)
@@ -217,7 +225,7 @@ def fetch_stock_data(
 def fetch_from_yfinance(
     symbol: str,
     start_date: str = "2025-01-01",
-    delay: float = 0.5
+    delay: float = 0.1
 ) -> Optional[pd.DataFrame]:
     """
     Fetch adjusted price data from yfinance as backup.
@@ -269,7 +277,7 @@ def fetch_from_yfinance(
 def fetch_index_from_yfinance(
     index_name: str = "NIFTY 50",
     start_date: str = "2025-01-01",
-    delay: float = 0.5
+    delay: float = 0.1
 ) -> Optional[pd.DataFrame]:
     """
     Fetch index data from yfinance.

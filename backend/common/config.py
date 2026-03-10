@@ -13,4 +13,4 @@ DATA_PERIOD = "1Y"  # 1 year of historical data (legacy, for nselib period param
 DATA_START_DATE = "01-01-2025"  # Fixed start date (dd-mm-yyyy format for nselib)
 
 # Rate limiting (NSE may block if too many requests)
-REQUEST_DELAY_SECONDS = 0.5  # Delay between API calls
+REQUEST_DELAY_SECONDS = 0.2  # Delay between API calls
