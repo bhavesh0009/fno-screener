@@ -4,7 +4,6 @@ import requests
 import pandas as pd
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict
-import duckdb
 
 from nselib import capital_market, derivatives
 
@@ -28,7 +27,7 @@ def fetch_fno_stocks() -> pd.DataFrame:
 def fetch_lot_sizes() -> Dict[str, int]:
     """
     Fetch lot sizes for F&O stocks from Angel Broking ScripMaster API.
-    
+
     Returns:
         Dictionary mapping symbol names to lot sizes
     """
@@ -37,15 +36,15 @@ def fetch_lot_sizes() -> Dict[str, int]:
         resp = requests.get(LOT_SIZE_API_URL, timeout=60)
         resp.raise_for_status()
         data = resp.json()
-        
+
         # Filter for NFO segment, FUTSTK instrument type
         futstk = [
-            item for item in data 
-            if item.get('exch_seg') == 'NFO' 
+            item for item in data
+            if item.get('exch_seg') == 'NFO'
             and item.get('instrumenttype') == 'FUTSTK'
             and not item.get('name', '').endswith('NSETEST')  # Exclude test symbols
         ]
-        
+
         # Build symbol -> lot size mapping (name field matches NSE symbol)
         lot_sizes = {}
         for item in futstk:
@@ -53,10 +52,10 @@ def fetch_lot_sizes() -> Dict[str, int]:
             lotsize = int(item.get('lotsize', 0))
             if name and lotsize > 0:
                 lot_sizes[name] = lotsize
-        
+
         logger.info("Lot sizes fetched", count=len(lot_sizes))
         return lot_sizes
-        
+
     except Exception as e:
         logger.error("Failed to fetch lot sizes", error=str(e))
         return {}
@@ -86,10 +85,10 @@ def _get_nse_session():
 def fetch_stock_metadata(symbol: str) -> Dict[str, str]:
     """
     Fetch industry and segment metadata for a stock from NSE API.
-    
+
     Args:
         symbol: Stock symbol (e.g., 'RELIANCE')
-        
+
     Returns:
         Dict with 'industry' and 'segment' keys, or empty dict on failure
     """
@@ -97,7 +96,7 @@ def fetch_stock_metadata(symbol: str) -> Dict[str, str]:
     try:
         url = f'https://www.nseindia.com/api/quote-derivative?symbol={symbol}'
         resp = session.get(url, timeout=10)
-        
+
         if resp.status_code == 200:
             data = resp.json()
             info = data.get('info', {})
@@ -108,7 +107,7 @@ def fetch_stock_metadata(symbol: str) -> Dict[str, str]:
         else:
             logger.warning("NSE API error", symbol=symbol, status=resp.status_code)
             return {}
-            
+
     except Exception as e:
         logger.warning("Failed to fetch metadata", symbol=symbol, error=str(e))
         return {}
@@ -122,27 +121,28 @@ def _update_worker(symbol: str, delay_seconds: float):
     return symbol, metadata
 
 def update_stock_metadata(
-    conn: duckdb.DuckDBPyConnection,
+    conn,
     symbols_to_update: List[str],
     delay_seconds: float = 0.5
 ) -> int:
     """
     Update industry and segment metadata for stocks with null values.
-    
+
     Args:
         conn: Database connection
         symbols_to_update: List of symbols needing metadata
         delay_seconds: Delay between API calls to avoid rate limiting
-        
+
     Returns:
         Number of stocks updated
     """
     if not symbols_to_update:
         return 0
-    
+
     logger.info("Updating stock metadata", count=len(symbols_to_update))
     updated = 0
-    
+    cur = conn.cursor()
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         future_to_symbol = {executor.submit(_update_worker, symbol, delay_seconds): symbol for symbol in symbols_to_update}
         for i, future in enumerate(concurrent.futures.as_completed(future_to_symbol)):
@@ -150,26 +150,26 @@ def update_stock_metadata(
             try:
                 sym, metadata = future.result()
                 if metadata.get('industry') or metadata.get('segment'):
-                    conn.execute("""
-                        UPDATE fno_stocks 
-                        SET industry = ?, segment = ?
-                        WHERE symbol = ?
+                    cur.execute("""
+                        UPDATE fno_stocks
+                        SET industry = %s, segment = %s
+                        WHERE symbol = %s
                     """, [metadata.get('industry', ''), metadata.get('segment', ''), symbol])
                     updated += 1
-                    
+
                 # Progress logging every 20 stocks
                 if (i + 1) % 20 == 0:
                     logger.info("Metadata progress", processed=i+1, total=len(symbols_to_update), updated=updated)
             except Exception as e:
                 logger.error("Metadata update failed", symbol=symbol, error=str(e))
-    
+
     conn.commit()
     logger.info("Stock metadata updated", total=len(symbols_to_update), updated=updated)
     return updated
 
 
 def fetch_stock_data(
-    symbol: str, 
+    symbol: str,
     period: str = None,
     from_date: str = None,
     to_date: str = None,
@@ -177,45 +177,45 @@ def fetch_stock_data(
 ) -> Optional[pd.DataFrame]:
     """
     Fetch price, volume and delivery data for a stock.
-    
+
     Args:
         symbol: Stock symbol (e.g., 'SBIN')
         period: Data period ('1M', '3M', '6M', '1Y') - used if from_date not provided
         from_date: Start date in dd-mm-yyyy format
         to_date: End date in dd-mm-yyyy format (defaults to today)
         delay: Delay after request (rate limiting)
-    
+
     Returns:
         DataFrame with OHLCV data or None if failed
     """
     try:
         logger.debug("Fetching stock data", symbol=symbol, from_date=from_date)
-        
+
         if from_date:
             # Use date range
             if to_date is None:
                 to_date = datetime.now().strftime("%d-%m-%Y")
             df = capital_market.price_volume_and_deliverable_position_data(
-                symbol=symbol, 
+                symbol=symbol,
                 from_date=from_date,
                 to_date=to_date
             )
         else:
             # Use period (legacy)
             df = capital_market.price_volume_and_deliverable_position_data(
-                symbol=symbol, 
+                symbol=symbol,
                 period=period or "1Y"
             )
-        
+
         time.sleep(delay)  # Rate limiting
-        
+
         if df is not None and not df.empty:
             logger.info("Stock data fetched", symbol=symbol, records=len(df))
             return df
         else:
             logger.warning("No data returned", symbol=symbol)
             return None
-            
+
     except Exception as e:
         logger.error("Failed to fetch stock data", symbol=symbol, error=str(e))
         time.sleep(delay)
@@ -229,26 +229,26 @@ def fetch_from_yfinance(
 ) -> Optional[pd.DataFrame]:
     """
     Fetch adjusted price data from yfinance as backup.
-    
+
     Args:
         symbol: Stock symbol (e.g., 'SBIN') - will add .NS suffix
         start_date: Start date in YYYY-MM-DD format
         delay: Delay after request (rate limiting)
-    
+
     Returns:
         DataFrame with adjusted OHLCV data or None if failed
     """
     try:
         import yfinance as yf
-        
+
         ticker_symbol = f"{symbol}.NS"
         logger.info("Fetching from yfinance", symbol=ticker_symbol, start_date=start_date)
-        
+
         ticker = yf.Ticker(ticker_symbol)
         df = ticker.history(start=start_date)
-        
+
         time.sleep(delay)
-        
+
         if df is not None and not df.empty:
             # Normalize column names to match our schema
             df = df.reset_index()
@@ -267,7 +267,7 @@ def fetch_from_yfinance(
         else:
             logger.warning("No yfinance data", symbol=ticker_symbol)
             return None
-            
+
     except Exception as e:
         logger.error("yfinance fetch failed", symbol=symbol, error=str(e))
         time.sleep(delay)
@@ -281,32 +281,32 @@ def fetch_index_from_yfinance(
 ) -> Optional[pd.DataFrame]:
     """
     Fetch index data from yfinance.
-    
+
     Args:
         index_name: Index name (maps to yfinance ticker)
         start_date: Start date in YYYY-MM-DD format
         delay: Delay after request (rate limiting)
-    
+
     Returns:
         DataFrame with OHLC data formatted for store_index_data, or None if failed
     """
     try:
         import yfinance as yf
-        
+
         # Map index names to yfinance tickers
         ticker_map = {
             'NIFTY 50': '^NSEI',
             'NIFTY BANK': '^NSEBANK',
         }
-        
+
         ticker_symbol = ticker_map.get(index_name, '^NSEI')
         logger.info("Fetching index from yfinance", index=index_name, ticker=ticker_symbol)
-        
+
         ticker = yf.Ticker(ticker_symbol)
         df = ticker.history(start=start_date)
-        
+
         time.sleep(delay)
-        
+
         if df is not None and not df.empty:
             df = df.reset_index()
             # Normalize to match store_index_data expected format
@@ -324,7 +324,7 @@ def fetch_index_from_yfinance(
         else:
             logger.warning("No yfinance index data", index=index_name)
             return None
-            
+
     except Exception as e:
         logger.error("yfinance index fetch failed", index=index_name, error=str(e))
         time.sleep(delay)
@@ -332,13 +332,13 @@ def fetch_index_from_yfinance(
 
 
 def store_fno_stocks(
-    conn: duckdb.DuckDBPyConnection, 
+    conn,
     df: pd.DataFrame,
     lot_sizes: Dict[str, int] = None
 ) -> int:
     """
     Store F&O stocks list in database.
-    
+
     Args:
         conn: Database connection
         df: DataFrame with F&O stocks from nselib
@@ -346,56 +346,61 @@ def store_fno_stocks(
     """
     if df is None or df.empty:
         return 0
-    
+
     if lot_sizes is None:
         lot_sizes = {}
-    
+
     # Normalize column names
     df.columns = [c.strip().lower().replace(' ', '_') for c in df.columns]
-    
+
     # Map columns - adjust based on actual nselib output
     insert_data = []
     for _, row in df.iterrows():
         symbol = row.get('symbol', row.get('Symbol', ''))
         company = row.get('underlying', row.get('company_name', row.get('companyname', '')))
-        
+
         if symbol:
             symbol = str(symbol).strip()
             # Get lot size from provided mapping, or default to 0
             lot_size = lot_sizes.get(symbol, 0)
             insert_data.append((symbol, str(company).strip(), lot_size))
-    
+
     if insert_data:
-        conn.executemany("""
-            INSERT OR REPLACE INTO fno_stocks (symbol, company_name, lot_size, last_updated)
-            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+        cur = conn.cursor()
+        cur.executemany("""
+            INSERT INTO fno_stocks (symbol, company_name, lot_size, last_updated)
+            VALUES (%s, %s, %s, NOW())
+            ON CONFLICT (symbol) DO UPDATE SET
+                company_name = EXCLUDED.company_name,
+                lot_size = EXCLUDED.lot_size,
+                last_updated = NOW()
         """, insert_data)
         conn.commit()
         logger.info("F&O stocks stored", count=len(insert_data), with_lot_sizes=sum(1 for s, c, l in insert_data if l > 0))
-    
+
     return len(insert_data)
 
 
 def store_ohlcv_data(
-    conn: duckdb.DuckDBPyConnection, 
-    symbol: str, 
+    conn,
+    symbol: str,
     df: pd.DataFrame
 ) -> int:
     """Store OHLCV data for a stock."""
     if df is None or df.empty:
         return 0
-    
+
     # Clean column names - remove BOM and extra quotes, normalize
     df = df.copy()
     df.columns = [c.replace('\ufeff', '').replace('"', '').strip() for c in df.columns]
-    
+
     # Filter to EQ series only to prevent duplicates from BL/T0 series
     if 'Series' in df.columns:
         df = df[df['Series'] == 'EQ']
         if df.empty:
             logger.warning("No EQ series data", symbol=symbol)
             return 0
-    
+
     records = []
     for _, row in df.iterrows():
         try:
@@ -403,7 +408,7 @@ def store_ohlcv_data(
             date_val = row.get('Date', None)
             if date_val is None:
                 continue
-            
+
             if isinstance(date_val, str):
                 # Try different date formats
                 for fmt in ['%d-%b-%Y', '%d-%m-%Y', '%Y-%m-%d', '%d %b %Y']:
@@ -412,7 +417,7 @@ def store_ohlcv_data(
                         break
                     except:
                         continue
-            
+
             # Helper to safely convert to float
             def safe_float(val, default=0.0):
                 try:
@@ -425,7 +430,7 @@ def store_ohlcv_data(
                     return float(val)
                 except:
                     return default
-            
+
             # Helper to safely convert to int
             def safe_int(val, default=0):
                 try:
@@ -439,7 +444,7 @@ def store_ohlcv_data(
                     return int(float(val))
                 except:
                     return default
-            
+
             record = (
                 symbol,
                 date_val,
@@ -460,17 +465,24 @@ def store_ohlcv_data(
         except Exception as e:
             logger.warning("Could not parse row", symbol=symbol, error=str(e))
             continue
-    
+
     if records:
-        conn.executemany("""
-            INSERT OR REPLACE INTO daily_ohlcv 
-            (symbol, date, series, open, high, low, close, prev_close, 
+        cur = conn.cursor()
+        cur.executemany("""
+            INSERT INTO daily_ohlcv
+            (symbol, date, series, open, high, low, close, prev_close,
              volume, value, vwap, trades, delivery_volume, delivery_pct)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (symbol, date) DO UPDATE SET
+                series=EXCLUDED.series, open=EXCLUDED.open, high=EXCLUDED.high,
+                low=EXCLUDED.low, close=EXCLUDED.close, prev_close=EXCLUDED.prev_close,
+                volume=EXCLUDED.volume, value=EXCLUDED.value, vwap=EXCLUDED.vwap,
+                trades=EXCLUDED.trades, delivery_volume=EXCLUDED.delivery_volume,
+                delivery_pct=EXCLUDED.delivery_pct
         """, records)
         conn.commit()
         logger.debug("OHLCV data stored", symbol=symbol, records=len(records))
-    
+
     return len(records)
 
 
@@ -480,39 +492,39 @@ def fetch_index_data(
 ) -> Optional[pd.DataFrame]:
     """
     Fetch historical index data.
-    
+
     Args:
         index_name: Index name (e.g., 'NIFTY 50', 'NIFTY BANK')
         period: Data period ('1D', '1W', '1M', '6M', '1Y')
-    
+
     Returns:
         DataFrame with OHLC data or None if failed
     """
     try:
         logger.info("Fetching index data", index=index_name, period=period)
         df = capital_market.index_data(index=index_name, period=period)
-        
+
         if df is not None and not df.empty:
             logger.info("Index data fetched", index=index_name, records=len(df))
             return df
         else:
             logger.warning("No index data", index=index_name)
             return None
-            
+
     except Exception as e:
         logger.error("Failed to fetch index data", index=index_name, error=str(e))
         return None
 
 
 def store_index_data(
-    conn: duckdb.DuckDBPyConnection,
+    conn,
     index_name: str,
     df: pd.DataFrame
 ) -> int:
     """Store index OHLC data in database."""
     if df is None or df.empty:
         return 0
-    
+
     records = []
     for _, row in df.iterrows():
         try:
@@ -520,7 +532,7 @@ def store_index_data(
             date_val = row.get('TIMESTAMP', None)
             if date_val is None:
                 continue
-            
+
             if isinstance(date_val, str):
                 for fmt in ['%d-%b-%Y', '%d-%m-%Y', '%Y-%m-%d', '%d %b %Y']:
                     try:
@@ -528,7 +540,7 @@ def store_index_data(
                         break
                     except:
                         continue
-            
+
             # Helper to safely convert to float
             def safe_float(val, default=0.0):
                 try:
@@ -539,7 +551,7 @@ def store_index_data(
                     return float(val)
                 except:
                     return default
-            
+
             record = (
                 index_name,
                 date_val,
@@ -552,83 +564,88 @@ def store_index_data(
         except Exception as e:
             logger.warning("Could not parse index row", index=index_name, error=str(e))
             continue
-    
+
     if records:
-        conn.executemany("""
-            INSERT OR REPLACE INTO index_ohlcv 
+        cur = conn.cursor()
+        cur.executemany("""
+            INSERT INTO index_ohlcv
             (index_name, date, open, high, close, low)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (index_name, date) DO UPDATE SET
+                open=EXCLUDED.open, high=EXCLUDED.high,
+                close=EXCLUDED.close, low=EXCLUDED.low
         """, records)
         conn.commit()
         logger.info("Index data stored", index=index_name, records=len(records))
-    
+
     return len(records)
 
 
 def fetch_ban_period_stocks(trade_date: str = None) -> List[str]:
     """
     Fetch list of F&O stocks currently in ban period.
-    
+
     Args:
         trade_date: Date in DD-MM-YYYY format (defaults to today)
-    
+
     Returns:
         List of stock symbols in ban period
     """
     if trade_date is None:
         trade_date = datetime.now().strftime('%d-%m-%Y')
-    
+
     try:
         logger.info("Fetching ban period stocks", trade_date=trade_date)
         data = derivatives.fno_security_in_ban_period(trade_date=trade_date)
-        
+
         if data is not None and len(data) > 0:
             logger.info("Ban period stocks fetched", trade_date=trade_date, count=len(data), symbols=data)
             return data
         else:
             logger.info("No stocks in ban period", trade_date=trade_date)
             return []
-            
+
     except Exception as e:
         logger.error("Failed to fetch ban period stocks", trade_date=trade_date, error=str(e))
         return []
 
 
 def store_ban_period_data(
-    conn: duckdb.DuckDBPyConnection,
+    conn,
     trade_date: str,
     symbols: List[str]
 ) -> int:
     """
     Store F&O ban period data in database.
-    
+
     Args:
         conn: Database connection
         trade_date: Date in DD-MM-YYYY format
         symbols: List of stock symbols in ban
-    
+
     Returns:
         Number of records stored
     """
     if not symbols:
         return 0
-    
+
     # Parse the date
     try:
         date_val = datetime.strptime(trade_date, '%d-%m-%Y').date()
     except ValueError:
         logger.error("Invalid date format", trade_date=trade_date)
         return 0
-    
+
     records = [(date_val, symbol) for symbol in symbols]
-    
+
     if records:
-        conn.executemany("""
-            INSERT OR REPLACE INTO fno_ban_period (trade_date, symbol)
-            VALUES (?, ?)
+        cur = conn.cursor()
+        cur.executemany("""
+            INSERT INTO fno_ban_period (trade_date, symbol)
+            VALUES (%s, %s)
+            ON CONFLICT (trade_date, symbol) DO NOTHING
         """, records)
         conn.commit()
         logger.info("Ban period data stored", trade_date=trade_date, count=len(records))
-    
-    return len(records)
 
+    return len(records)

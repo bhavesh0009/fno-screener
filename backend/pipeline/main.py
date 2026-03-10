@@ -4,7 +4,7 @@ import sys
 from datetime import datetime, timedelta
 import concurrent.futures
 
-from common.config import DB_PATH, DATA_PERIOD, DATA_START_DATE, REQUEST_DELAY_SECONDS
+from common.config import DATABASE_URL, DATA_PERIOD, DATA_START_DATE, REQUEST_DELAY_SECONDS
 from common.db.schema import init_database, get_connection
 from common.logger import get_pipeline_logger
 from pipeline.collectors.nse_collector import (
@@ -55,9 +55,10 @@ def detect_mismatches(conn):
     Returns list of symbols that need yfinance backup.
     """
     logger.info("Detecting price mismatches")
-    result = conn.execute('''
+    cur = conn.cursor()
+    cur.execute('''
         WITH ordered_data AS (
-            SELECT 
+            SELECT
                 symbol,
                 date,
                 close,
@@ -68,7 +69,8 @@ def detect_mismatches(conn):
         FROM ordered_data
         WHERE prev_close IS NOT NULL
           AND ABS((close - prev_close) / prev_close) > 0.30
-    ''').fetchall()
+    ''')
+    result = cur.fetchall()
     
     symbols = [r[0] for r in result]
     logger.info("Mismatches detected", count=len(symbols), symbols=symbols)
@@ -104,12 +106,13 @@ def fix_with_yfinance(conn, symbols):
                 
                 # Update all OHLC + volume for each date (yfinance provides adjusted OHLC)
                 updated = 0
+                cur = conn.cursor()
                 for _, row in yf_df.iterrows():
                     try:
-                        conn.execute('''
-                            UPDATE daily_ohlcv 
-                            SET open = ?, high = ?, low = ?, close = ?, volume = ?
-                            WHERE symbol = ? AND date = ?
+                        cur.execute('''
+                            UPDATE daily_ohlcv
+                            SET open = %s, high = %s, low = %s, close = %s, volume = %s
+                            WHERE symbol = %s AND date = %s
                         ''', [
                             float(row['open']),
                             float(row['high']),
@@ -146,8 +149,8 @@ def collect_all():
                 data_start_date=DATA_START_DATE)
     
     # Initialize database
-    logger.info("Initializing database", path=str(DB_PATH))
-    conn = init_database(DB_PATH)
+    logger.info("Initializing database")
+    conn = init_database(DATABASE_URL)
     
     # Fetch and store F&O stock list with lot sizes
     fno_df = fetch_fno_stocks()
@@ -166,7 +169,9 @@ def collect_all():
     logger.info("F&O stocks stored", count=stored)
     
     # Get list of symbols
-    symbols = conn.execute("SELECT symbol FROM fno_stocks ORDER BY symbol").fetchall()
+    cur = conn.cursor()
+    cur.execute("SELECT symbol FROM fno_stocks ORDER BY symbol")
+    symbols = cur.fetchall()
     symbols = [s[0] for s in symbols]
     
     # === STEP 1: Fetch from nselib (primary source) ===
@@ -180,7 +185,8 @@ def collect_all():
     
     # Get max dates to perform incremental fetch
     try:
-        max_dates = dict(conn.execute("SELECT symbol, MAX(date) FROM daily_ohlcv GROUP BY symbol").fetchall())
+        cur.execute("SELECT symbol, MAX(date) FROM daily_ohlcv GROUP BY symbol")
+        max_dates = dict(cur.fetchall())
     except Exception:
         max_dates = {}
     
@@ -262,11 +268,13 @@ def collect_all():
     
     # === STEP 6: Update stock metadata (industry/segment) if null ===
     # This data rarely changes, so only fetch for stocks with null values
-    symbols_needing_metadata = conn.execute("""
-        SELECT symbol FROM fno_stocks 
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT symbol FROM fno_stocks
         WHERE industry IS NULL OR segment IS NULL OR industry = '' OR segment = ''
         ORDER BY symbol
-    """).fetchall()
+    """)
+    symbols_needing_metadata = cur.fetchall()
     symbols_needing_metadata = [s[0] for s in symbols_needing_metadata]
     
     if symbols_needing_metadata:
@@ -278,7 +286,6 @@ def collect_all():
         logger.info("STEP 6: All stocks have metadata, skipping")
     
     logger.info("Pipeline completed",
-                database=str(DB_PATH),
                 finish_time=datetime.now().isoformat())
     
     conn.close()
@@ -287,18 +294,16 @@ def collect_all():
 
 def show_stats():
     """Show database statistics."""
-    if not DB_PATH.exists():
-        logger.error("Database not found. Run 'collect-all' first.", path=str(DB_PATH))
-        return 1
-    
-    conn = get_connection(DB_PATH)
-    
-    stock_count = conn.execute("SELECT COUNT(*) FROM fno_stocks").fetchone()[0]
-    ohlcv_count = conn.execute("SELECT COUNT(*) FROM daily_ohlcv").fetchone()[0]
-    
-    date_range = conn.execute("""
-        SELECT MIN(date), MAX(date) FROM daily_ohlcv
-    """).fetchone()
+    conn = get_connection(DATABASE_URL)
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) FROM fno_stocks")
+    stock_count = cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM daily_ohlcv")
+    ohlcv_count = cur.fetchone()[0]
+
+    cur.execute("SELECT MIN(date), MAX(date) FROM daily_ohlcv")
+    date_range = cur.fetchone()
     
     print("\n" + "=" * 40)
     print("Database Statistics")
@@ -307,7 +312,6 @@ def show_stats():
     print(f"OHLCV Records: {ohlcv_count}")
     if date_range[0]:
         print(f"Date Range: {date_range[0]} to {date_range[1]}")
-    print(f"Database: {DB_PATH}")
     print("=" * 40 + "\n")
     
     conn.close()
@@ -319,7 +323,7 @@ def collect_one(symbol: str):
     logger.info("Collecting data for single stock", symbol=symbol)
     
     # Initialize database (ensures tables exist)
-    conn = init_database(DB_PATH)
+    conn = init_database(DATABASE_URL)
     
     # Fetch OHLCV data
     df_ohlcv = fetch_stock_data(symbol, period=DATA_PERIOD)

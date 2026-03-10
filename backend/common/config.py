@@ -1,12 +1,17 @@
 """Configuration settings for the stock screener."""
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Project paths
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
-DB_PATH = DATA_DIR / "stocks.duckdb"
 LOGS_DIR = Path(__file__).parent.parent / "logs"
+
+# Supabase PostgreSQL connection string
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 # Data collection settings
 DATA_PERIOD = "1Y"  # 1 year of historical data (legacy, for nselib period param)
