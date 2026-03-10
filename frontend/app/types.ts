@@ -25,6 +25,7 @@ export interface StockResult {
     deliveryPct?: number;
     volumeMult: number;
     strength?: string;
+    inBan?: boolean;
 }
 
 export interface ScreenResult {
@@ -59,6 +60,7 @@ export interface Stock {
     aboveSma200: boolean | null;
     rsRank: number | null;
     sparkline: number[];
+    inBan?: boolean;
 }
 
 export interface Stats {

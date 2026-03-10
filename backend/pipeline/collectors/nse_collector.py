@@ -1,16 +1,20 @@
 """NSE data collector using nselib with structured logging."""
 import time
+import requests
 import pandas as pd
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, List, Dict
 import duckdb
 
-from nselib import capital_market
+from nselib import capital_market, derivatives
 
 from common.logger import get_pipeline_logger
 
 # Get module logger
 logger = get_pipeline_logger("collector")
+
+# Angel Broking ScripMaster URL for lot sizes
+LOT_SIZE_API_URL = "https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json"
 
 
 def fetch_fno_stocks() -> pd.DataFrame:
@@ -19,6 +23,141 @@ def fetch_fno_stocks() -> pd.DataFrame:
     df = capital_market.fno_equity_list()
     logger.info("F&O stock list fetched", count=len(df))
     return df
+
+
+def fetch_lot_sizes() -> Dict[str, int]:
+    """
+    Fetch lot sizes for F&O stocks from Angel Broking ScripMaster API.
+    
+    Returns:
+        Dictionary mapping symbol names to lot sizes
+    """
+    logger.info("Fetching lot sizes from Angel Broking API")
+    try:
+        resp = requests.get(LOT_SIZE_API_URL, timeout=60)
+        resp.raise_for_status()
+        data = resp.json()
+        
+        # Filter for NFO segment, FUTSTK instrument type
+        futstk = [
+            item for item in data 
+            if item.get('exch_seg') == 'NFO' 
+            and item.get('instrumenttype') == 'FUTSTK'
+            and not item.get('name', '').endswith('NSETEST')  # Exclude test symbols
+        ]
+        
+        # Build symbol -> lot size mapping (name field matches NSE symbol)
+        lot_sizes = {}
+        for item in futstk:
+            name = item.get('name', '').strip()
+            lotsize = int(item.get('lotsize', 0))
+            if name and lotsize > 0:
+                lot_sizes[name] = lotsize
+        
+        logger.info("Lot sizes fetched", count=len(lot_sizes))
+        return lot_sizes
+        
+    except Exception as e:
+        logger.error("Failed to fetch lot sizes", error=str(e))
+        return {}
+
+
+# NSE API session for metadata fetching
+_nse_session = None
+
+def _get_nse_session():
+    """Get or create NSE session with proper cookies."""
+    global _nse_session
+    if _nse_session is None:
+        _nse_session = requests.Session()
+        _nse_session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en-US,en;q=0.9',
+        })
+        # Get cookies from main page
+        try:
+            _nse_session.get('https://www.nseindia.com', timeout=10)
+        except Exception:
+            pass
+    return _nse_session
+
+
+def fetch_stock_metadata(symbol: str) -> Dict[str, str]:
+    """
+    Fetch industry and segment metadata for a stock from NSE API.
+    
+    Args:
+        symbol: Stock symbol (e.g., 'RELIANCE')
+        
+    Returns:
+        Dict with 'industry' and 'segment' keys, or empty dict on failure
+    """
+    session = _get_nse_session()
+    try:
+        url = f'https://www.nseindia.com/api/quote-derivative?symbol={symbol}'
+        resp = session.get(url, timeout=10)
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            info = data.get('info', {})
+            return {
+                'industry': info.get('industry', ''),
+                'segment': info.get('segment', '')
+            }
+        else:
+            logger.warning("NSE API error", symbol=symbol, status=resp.status_code)
+            return {}
+            
+    except Exception as e:
+        logger.warning("Failed to fetch metadata", symbol=symbol, error=str(e))
+        return {}
+
+
+def update_stock_metadata(
+    conn: duckdb.DuckDBPyConnection,
+    symbols_to_update: List[str],
+    delay_seconds: float = 0.5
+) -> int:
+    """
+    Update industry and segment metadata for stocks with null values.
+    
+    Args:
+        conn: Database connection
+        symbols_to_update: List of symbols needing metadata
+        delay_seconds: Delay between API calls to avoid rate limiting
+        
+    Returns:
+        Number of stocks updated
+    """
+    if not symbols_to_update:
+        return 0
+    
+    logger.info("Updating stock metadata", count=len(symbols_to_update))
+    updated = 0
+    
+    for i, symbol in enumerate(symbols_to_update):
+        metadata = fetch_stock_metadata(symbol)
+        
+        if metadata.get('industry') or metadata.get('segment'):
+            conn.execute("""
+                UPDATE fno_stocks 
+                SET industry = ?, segment = ?
+                WHERE symbol = ?
+            """, [metadata.get('industry', ''), metadata.get('segment', ''), symbol])
+            updated += 1
+            
+        # Progress logging every 20 stocks
+        if (i + 1) % 20 == 0:
+            logger.info("Metadata progress", processed=i+1, total=len(symbols_to_update), updated=updated)
+        
+        # Rate limiting
+        if i < len(symbols_to_update) - 1:
+            time.sleep(delay_seconds)
+    
+    conn.commit()
+    logger.info("Stock metadata updated", total=len(symbols_to_update), updated=updated)
+    return updated
 
 
 def fetch_stock_data(
@@ -184,10 +323,24 @@ def fetch_index_from_yfinance(
         return None
 
 
-def store_fno_stocks(conn: duckdb.DuckDBPyConnection, df: pd.DataFrame) -> int:
-    """Store F&O stocks list in database."""
+def store_fno_stocks(
+    conn: duckdb.DuckDBPyConnection, 
+    df: pd.DataFrame,
+    lot_sizes: Dict[str, int] = None
+) -> int:
+    """
+    Store F&O stocks list in database.
+    
+    Args:
+        conn: Database connection
+        df: DataFrame with F&O stocks from nselib
+        lot_sizes: Optional dict mapping symbol -> lot_size (from fetch_lot_sizes)
+    """
     if df is None or df.empty:
         return 0
+    
+    if lot_sizes is None:
+        lot_sizes = {}
     
     # Normalize column names
     df.columns = [c.strip().lower().replace(' ', '_') for c in df.columns]
@@ -196,11 +349,13 @@ def store_fno_stocks(conn: duckdb.DuckDBPyConnection, df: pd.DataFrame) -> int:
     insert_data = []
     for _, row in df.iterrows():
         symbol = row.get('symbol', row.get('Symbol', ''))
-        company = row.get('company_name', row.get('companyname', row.get('Company Name', '')))
-        lot_size = row.get('lot_size', row.get('lotsize', row.get('Lot Size', 0)))
+        company = row.get('underlying', row.get('company_name', row.get('companyname', '')))
         
         if symbol:
-            insert_data.append((str(symbol).strip(), str(company).strip(), int(lot_size) if lot_size else 0))
+            symbol = str(symbol).strip()
+            # Get lot size from provided mapping, or default to 0
+            lot_size = lot_sizes.get(symbol, 0)
+            insert_data.append((symbol, str(company).strip(), lot_size))
     
     if insert_data:
         conn.executemany("""
@@ -208,7 +363,7 @@ def store_fno_stocks(conn: duckdb.DuckDBPyConnection, df: pd.DataFrame) -> int:
             VALUES (?, ?, ?, CURRENT_TIMESTAMP)
         """, insert_data)
         conn.commit()
-        logger.info("F&O stocks stored", count=len(insert_data))
+        logger.info("F&O stocks stored", count=len(insert_data), with_lot_sizes=sum(1 for s, c, l in insert_data if l > 0))
     
     return len(insert_data)
 
@@ -400,3 +555,72 @@ def store_index_data(
         logger.info("Index data stored", index=index_name, records=len(records))
     
     return len(records)
+
+
+def fetch_ban_period_stocks(trade_date: str = None) -> List[str]:
+    """
+    Fetch list of F&O stocks currently in ban period.
+    
+    Args:
+        trade_date: Date in DD-MM-YYYY format (defaults to today)
+    
+    Returns:
+        List of stock symbols in ban period
+    """
+    if trade_date is None:
+        trade_date = datetime.now().strftime('%d-%m-%Y')
+    
+    try:
+        logger.info("Fetching ban period stocks", trade_date=trade_date)
+        data = derivatives.fno_security_in_ban_period(trade_date=trade_date)
+        
+        if data is not None and len(data) > 0:
+            logger.info("Ban period stocks fetched", trade_date=trade_date, count=len(data), symbols=data)
+            return data
+        else:
+            logger.info("No stocks in ban period", trade_date=trade_date)
+            return []
+            
+    except Exception as e:
+        logger.error("Failed to fetch ban period stocks", trade_date=trade_date, error=str(e))
+        return []
+
+
+def store_ban_period_data(
+    conn: duckdb.DuckDBPyConnection,
+    trade_date: str,
+    symbols: List[str]
+) -> int:
+    """
+    Store F&O ban period data in database.
+    
+    Args:
+        conn: Database connection
+        trade_date: Date in DD-MM-YYYY format
+        symbols: List of stock symbols in ban
+    
+    Returns:
+        Number of records stored
+    """
+    if not symbols:
+        return 0
+    
+    # Parse the date
+    try:
+        date_val = datetime.strptime(trade_date, '%d-%m-%Y').date()
+    except ValueError:
+        logger.error("Invalid date format", trade_date=trade_date)
+        return 0
+    
+    records = [(date_val, symbol) for symbol in symbols]
+    
+    if records:
+        conn.executemany("""
+            INSERT OR REPLACE INTO fno_ban_period (trade_date, symbol)
+            VALUES (?, ?)
+        """, records)
+        conn.commit()
+        logger.info("Ban period data stored", trade_date=trade_date, count=len(records))
+    
+    return len(records)
+

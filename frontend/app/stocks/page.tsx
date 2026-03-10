@@ -110,6 +110,7 @@ export default function StocksPage() {
     const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [excludeBanned, setExcludeBanned] = useState(false);
 
     const fetchStats = useCallback(async () => {
         try {
@@ -133,6 +134,7 @@ export default function StocksPage() {
                 sortBy,
                 sortOrder,
             });
+            if (excludeBanned) params.append('excludeBanned', 'true');
 
             const response = await fetch(`${API_BASE}/api/stocks?${params}`);
             if (!response.ok) throw new Error('Failed to fetch stocks');
@@ -149,7 +151,7 @@ export default function StocksPage() {
         } finally {
             setLoading(false);
         }
-    }, [pagination.page, pagination.limit, search, sortBy, sortOrder]);
+    }, [pagination.page, pagination.limit, search, sortBy, sortOrder, excludeBanned]);
 
     useEffect(() => {
         fetchStats();
@@ -205,16 +207,34 @@ export default function StocksPage() {
                     <h1 className="header__title">All Stocks Data</h1>
                     <p className="header__subtitle">Search and filter complete F&O universe with technical indicators</p>
                 </div>
-                <a href="/" className="btn-home" style={{
-                    color: 'var(--text-secondary)',
-                    textDecoration: 'none',
-                    fontSize: '0.9rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                }}>
-                    ← Back to Scanners
-                </a>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                    <label className="toggle-label" style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        cursor: 'pointer',
+                        fontSize: '0.85rem',
+                        color: 'var(--text-secondary)'
+                    }}>
+                        <input
+                            type="checkbox"
+                            checked={excludeBanned}
+                            onChange={(e) => setExcludeBanned(e.target.checked)}
+                            style={{ cursor: 'pointer' }}
+                        />
+                        Hide F&O Banned
+                    </label>
+                    <a href="/" className="btn-home" style={{
+                        color: 'var(--text-secondary)',
+                        textDecoration: 'none',
+                        fontSize: '0.9rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                    }}>
+                        ← Back to Scanners
+                    </a>
+                </div>
             </header>
 
             {/* Stats Cards */}
@@ -349,7 +369,10 @@ export default function StocksPage() {
                                                         }}
                                                     />
                                                     <div>
-                                                        <div className="symbol">{stock.symbol}</div>
+                                                        <div className="symbol">
+                                                            {stock.symbol}
+                                                            {stock.inBan && <span className="ban-badge" title="F&O Ban">🚫</span>}
+                                                        </div>
                                                         <div className="company-name">{stock.companyName}</div>
                                                     </div>
                                                 </div>

@@ -16,6 +16,9 @@ def init_database(db_path: Path) -> duckdb.DuckDBPyConnection:
             symbol VARCHAR PRIMARY KEY,
             company_name VARCHAR,
             lot_size INTEGER,
+            sector VARCHAR,
+            industry VARCHAR,
+            segment VARCHAR,
             last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -56,6 +59,16 @@ def init_database(db_path: Path) -> duckdb.DuckDBPyConnection:
             close DECIMAL(12,2),
             low DECIMAL(12,2),
             PRIMARY KEY (index_name, date)
+        )
+    """)
+    
+    # F&O Ban Period table - stores stocks in ban for each trading day
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fno_ban_period (
+            trade_date DATE NOT NULL,
+            symbol VARCHAR NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (trade_date, symbol)
         )
     """)
     

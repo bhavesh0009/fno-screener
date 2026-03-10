@@ -16,6 +16,10 @@ from pipeline.collectors.nse_collector import (
     store_index_data,
     fetch_from_yfinance,
     fetch_index_from_yfinance,
+    fetch_ban_period_stocks,
+    store_ban_period_data,
+    fetch_lot_sizes,
+    update_stock_metadata,
 )
 
 # Get module logger
@@ -122,13 +126,20 @@ def collect_all():
     logger.info("Initializing database", path=str(DB_PATH))
     conn = init_database(DB_PATH)
     
-    # Fetch and store F&O stock list
+    # Fetch and store F&O stock list with lot sizes
     fno_df = fetch_fno_stocks()
     if fno_df is None or fno_df.empty:
         logger.error("Could not fetch F&O stock list")
         return 1
     
-    stored = store_fno_stocks(conn, fno_df)
+    # Fetch lot sizes from Angel Broking API
+    lot_sizes = fetch_lot_sizes()
+    if lot_sizes:
+        logger.info("Lot sizes fetched", count=len(lot_sizes))
+    else:
+        logger.warning("Could not fetch lot sizes, will use 0")
+    
+    stored = store_fno_stocks(conn, fno_df, lot_sizes)
     logger.info("F&O stocks stored", count=stored)
     
     # Get list of symbols
@@ -183,8 +194,8 @@ def collect_all():
     else:
         logger.info("STEP 3: No mismatches to fix")
     
-    # === STEP 4: Fetch NIFTY 50 index from yfinance (more historical data) ===
-    logger.info("STEP 4: Fetching NIFTY 50 index data from yfinance")
+    # === STEP 4: Fetch Index data (NIFTY 50 and NIFTY BANK) from yfinance ===
+    logger.info("STEP 4: Fetching index data from yfinance")
     
     # Convert dd-mm-yyyy to YYYY-MM-DD for yfinance
     try:
@@ -194,12 +205,48 @@ def collect_all():
         logger.warning(f"Could not parse DATA_START_DATE: {DATA_START_DATE}, using default 2025-01-01")
         yf_start_date = "2025-01-01"
 
+    # Fetch NIFTY 50
     nifty_df = fetch_index_from_yfinance("NIFTY 50", start_date=yf_start_date)
     if nifty_df is not None:
         nifty_records = store_index_data(conn, "NIFTY 50", nifty_df)
         logger.info("NIFTY 50 index stored", records=nifty_records)
     else:
         logger.warning("Could not fetch NIFTY 50 data from yfinance")
+    
+    # Fetch NIFTY BANK
+    banknifty_df = fetch_index_from_yfinance("NIFTY BANK", start_date=yf_start_date)
+    if banknifty_df is not None:
+        banknifty_records = store_index_data(conn, "NIFTY BANK", banknifty_df)
+        logger.info("NIFTY BANK index stored", records=banknifty_records)
+    else:
+        logger.warning("Could not fetch NIFTY BANK data from yfinance")
+    
+    # === STEP 5: Fetch F&O Ban Period data ===
+    logger.info("STEP 5: Fetching F&O ban period data")
+    today_str = datetime.now().strftime("%d-%m-%Y")
+    banned_stocks = fetch_ban_period_stocks(trade_date=today_str)
+    if banned_stocks:
+        ban_records = store_ban_period_data(conn, today_str, banned_stocks)
+        logger.info("Ban period data stored", records=ban_records, symbols=banned_stocks)
+    else:
+        logger.info("No stocks in ban period today")
+    
+    # === STEP 6: Update stock metadata (industry/segment) if null ===
+    # This data rarely changes, so only fetch for stocks with null values
+    symbols_needing_metadata = conn.execute("""
+        SELECT symbol FROM fno_stocks 
+        WHERE industry IS NULL OR segment IS NULL OR industry = '' OR segment = ''
+        ORDER BY symbol
+    """).fetchall()
+    symbols_needing_metadata = [s[0] for s in symbols_needing_metadata]
+    
+    if symbols_needing_metadata:
+        logger.info("STEP 6: Updating stock metadata (industry/segment)", 
+                    count=len(symbols_needing_metadata))
+        updated = update_stock_metadata(conn, symbols_needing_metadata, delay_seconds=0.5)
+        logger.info("Metadata update complete", updated=updated)
+    else:
+        logger.info("STEP 6: All stocks have metadata, skipping")
     
     logger.info("Pipeline completed",
                 database=str(DB_PATH),

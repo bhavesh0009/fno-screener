@@ -53,6 +53,43 @@ def get_stats():
     })
 
 
+def get_banned_symbols(conn):
+    """Get list of symbols currently in F&O ban period (latest date in database)."""
+    result = conn.execute("""
+        SELECT symbol FROM fno_ban_period 
+        WHERE trade_date = (SELECT MAX(trade_date) FROM fno_ban_period)
+    """).fetchall()
+    return set(row[0] for row in result)
+
+
+@app.route("/api/ban-status")
+def get_ban_status():
+    """Get current F&O ban period status."""
+    conn = get_db()
+    
+    # Get latest ban date and banned symbols
+    ban_data = conn.execute("""
+        SELECT trade_date, symbol FROM fno_ban_period 
+        WHERE trade_date = (SELECT MAX(trade_date) FROM fno_ban_period)
+        ORDER BY symbol
+    """).fetchall()
+    
+    if ban_data:
+        trade_date = str(ban_data[0][0])
+        symbols = [row[1] for row in ban_data]
+    else:
+        trade_date = None
+        symbols = []
+    
+    conn.close()
+    
+    return jsonify({
+        "tradeDate": trade_date,
+        "count": len(symbols),
+        "symbols": symbols
+    })
+
+
 @app.route("/api/screens")
 def get_screens_list():
     """List available screens."""
@@ -65,9 +102,15 @@ def run_screen(screen_id):
     screen = get_screen(screen_id)
     if not screen:
         return jsonify({"error": "Screen not found"}), 404
+    
+    # Get filter params
+    exclude_banned = request.args.get("excludeBanned", "false").lower() == "true"
         
     conn = get_db()
     try:
+        # Get banned symbols if filtering is enabled or for marking
+        banned_symbols = get_banned_symbols(conn)
+        
         cursor = conn.execute(screen["sql"])
         results = cursor.fetchall()
         
@@ -107,6 +150,14 @@ def run_screen(screen_id):
                     item[key] = float(val)
                 else:
                     item[key] = val
+            
+            # Add ban status
+            item["inBan"] = item.get("symbol") in banned_symbols
+            
+            # Apply ban filter if requested
+            if exclude_banned and item["inBan"]:
+                continue
+                
             data.append(item)
             
         return jsonify({
@@ -132,6 +183,10 @@ def get_stocks():
     search = request.args.get("search", "", type=str)
     sort_by = request.args.get("sortBy", "symbol", type=str)
     sort_order = request.args.get("sortOrder", "asc", type=str)
+    exclude_banned = request.args.get("excludeBanned", "false").lower() == "true"
+    
+    # Get banned symbols for filtering and marking
+    banned_symbols = get_banned_symbols(conn)
     
     offset = (page - 1) * limit
     
@@ -354,6 +409,15 @@ def get_stocks():
     stocks = []
     for row in result:
         stock = dict(zip(columns, row))
+        
+        # Check ban status early for filtering
+        symbol = stock.get("symbol")
+        stock["inBan"] = symbol in banned_symbols
+        
+        # Skip banned stocks if filter is enabled
+        if exclude_banned and stock["inBan"]:
+            continue
+        
         # Convert date to string
         if stock["date"]:
             stock["date"] = str(stock["date"])

@@ -13,6 +13,7 @@ export default function ScreensPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortOrder } | null>(null);
+  const [excludeBanned, setExcludeBanned] = useState(false);
 
   useEffect(() => {
     fetch(`${API_ENDPOINT}/screens`)
@@ -27,7 +28,10 @@ export default function ScreensPage() {
     setError(null);
     setResults(null);
     try {
-      const res = await fetch(`${API_ENDPOINT}/screens/${screenId}/run`);
+      const params = new URLSearchParams();
+      if (excludeBanned) params.append('excludeBanned', 'true');
+      const url = `${API_ENDPOINT}/screens/${screenId}/run${params.toString() ? '?' + params.toString() : ''}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to run screen');
       const data = await res.json();
       setResults(data);
@@ -89,6 +93,7 @@ export default function ScreensPage() {
               }}
             />
             <span className="symbol">{value}</span>
+            {stock.inBan && <span className="ban-badge" title="F&O Ban">🚫</span>}
           </span>
         );
       case 'currency':
@@ -126,18 +131,36 @@ export default function ScreensPage() {
           <h1 className="header__title">Market Scanners</h1>
           <p className="header__subtitle">Real-time algorithmic screening for price & volume patterns</p>
         </div>
-        <a href="/stocks" className="btn-stocks" style={{
-          color: 'var(--text-secondary)',
-          textDecoration: 'none',
-          fontSize: '0.9rem',
-          fontWeight: '500',
-          border: '1px solid var(--border-color)',
-          padding: '0.5rem 1rem',
-          borderRadius: 'var(--radius-md)',
-          background: 'var(--bg-secondary)'
-        }}>
-          View All Stocks →
-        </a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          <label className="toggle-label" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            cursor: 'pointer',
+            fontSize: '0.85rem',
+            color: 'var(--text-secondary)'
+          }}>
+            <input
+              type="checkbox"
+              checked={excludeBanned}
+              onChange={(e) => setExcludeBanned(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+            Hide F&O Banned
+          </label>
+          <a href="/stocks" className="btn-stocks" style={{
+            color: 'var(--text-secondary)',
+            textDecoration: 'none',
+            fontSize: '0.9rem',
+            fontWeight: '500',
+            border: '1px solid var(--border-color)',
+            padding: '0.5rem 1rem',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--bg-secondary)'
+          }}>
+            View All Stocks →
+          </a>
+        </div>
       </header>
 
       {/* Screen Cards Grid */}
